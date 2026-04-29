@@ -1,0 +1,307 @@
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font-sans); }
+#drop-zone {
+  border: 1.5px dashed var(--color-border-secondary);
+  border-radius: var(--border-radius-lg);
+  padding: 3rem 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.15s;
+  background: var(--color-background-secondary);
+}
+#drop-zone:hover, #drop-zone.drag-over { background: var(--color-background-tertiary); border-color: var(--color-border-primary); }
+#drop-zone input { display: none; }
+#dashboard { display: none; }
+.filter-bar { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 0; border-bottom: 0.5px solid var(--color-border-tertiary); margin-bottom: 12px; align-items: flex-end; }
+.filter-group { display: flex; flex-direction: column; gap: 4px; }
+.filter-group label { font-size: 11px; color: var(--color-text-secondary); font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; }
+.filter-group select, .filter-group input[type=text] { height: 32px; font-size: 13px; padding: 0 8px; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-secondary); background: var(--color-background-primary); color: var(--color-text-primary); min-width: 120px; max-width: 180px; }
+.filter-group input[type=text] { min-width: 160px; }
+.sort-bar { display: flex; align-items: center; gap: 8px; padding: 8px 0; margin-bottom: 8px; }
+.sort-bar label { font-size: 11px; color: var(--color-text-secondary); font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; }
+.sort-bar select { height: 30px; font-size: 13px; padding: 0 8px; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-secondary); background: var(--color-background-primary); color: var(--color-text-primary); }
+.sort-btn { height: 30px; padding: 0 12px; font-size: 12px; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-secondary); background: var(--color-background-primary); color: var(--color-text-primary); cursor: pointer; }
+.sort-btn:hover { background: var(--color-background-secondary); }
+.stats-row { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+.stat-card { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 10px 16px; flex: 1; min-width: 100px; }
+.stat-card .s-label { font-size: 11px; color: var(--color-text-secondary); font-weight: 500; margin-bottom: 2px; }
+.stat-card .s-val { font-size: 20px; font-weight: 500; color: var(--color-text-primary); }
+.table-wrap { overflow-x: auto; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-tertiary); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead { position: sticky; top: 0; z-index: 2; }
+thead th { background: var(--color-background-secondary); color: var(--color-text-secondary); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; padding: 10px 12px; text-align: left; border-bottom: 0.5px solid var(--color-border-tertiary); white-space: nowrap; cursor: pointer; user-select: none; }
+thead th:hover { color: var(--color-text-primary); }
+tbody tr { border-bottom: 0.5px solid var(--color-border-tertiary); transition: background 0.1s; }
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: var(--color-background-secondary); }
+tbody td { padding: 9px 12px; color: var(--color-text-primary); white-space: nowrap; max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+.no-rows { text-align: center; padding: 2rem; color: var(--color-text-secondary); font-size: 14px; }
+.top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.top-bar .filename { font-size: 13px; color: var(--color-text-secondary); }
+.reset-btn { font-size: 12px; padding: 5px 12px; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-secondary); background: transparent; color: var(--color-text-secondary); cursor: pointer; }
+.reset-btn:hover { color: var(--color-text-primary); background: var(--color-background-secondary); }
+.change-btn { font-size: 12px; padding: 5px 12px; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-secondary); background: transparent; color: var(--color-text-secondary); cursor: pointer; margin-left: 6px; }
+.change-btn:hover { color: var(--color-text-primary); background: var(--color-background-secondary); }
+.pagination { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 13px; color: var(--color-text-secondary); }
+.page-btn { height: 28px; padding: 0 10px; font-size: 12px; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-secondary); background: var(--color-background-primary); color: var(--color-text-primary); cursor: pointer; }
+.page-btn:disabled { opacity: 0.35; cursor: default; }
+.page-btn:not(:disabled):hover { background: var(--color-background-secondary); }
+.search-box { height: 32px; font-size: 13px; padding: 0 10px; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-secondary); background: var(--color-background-primary); color: var(--color-text-primary); min-width: 200px; }
+</style>
+
+<h2 class="sr-only">Dynamic data dashboard — upload a CSV or Excel file to explore and filter your data.</h2>
+
+<div id="drop-zone" onclick="document.getElementById('fileInput').click()">
+  <input type="file" id="fileInput" accept=".csv,.xlsx,.xls">
+  <div style="font-size: 32px; margin-bottom: 12px; color: var(--color-text-secondary);">⬆</div>
+  <div style="font-size: 16px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 6px;">Drop your file here or click to upload</div>
+  <div style="font-size: 13px; color: var(--color-text-secondary);">Supports CSV, XLSX, XLS — filters & sorting auto-generated from your columns</div>
+</div>
+
+<div id="dashboard">
+  <div class="top-bar">
+    <span class="filename" id="fname"></span>
+    <div>
+      <button class="reset-btn" onclick="resetFilters()">Reset filters</button>
+      <button class="change-btn" onclick="changeFile()">Change file</button>
+    </div>
+  </div>
+  <div class="stats-row" id="stats-row"></div>
+  <div style="display:flex; gap:8px; margin-bottom:10px; align-items:center; flex-wrap:wrap;">
+    <input type="text" class="search-box" id="globalSearch" placeholder="Search all columns..." oninput="applyFilters()">
+    <button class="reset-btn" onclick="document.getElementById('globalSearch').value='';applyFilters();" style="height:32px;">Clear</button>
+  </div>
+  <div class="filter-bar" id="filter-bar"></div>
+  <div class="sort-bar">
+    <label>Sort by</label>
+    <select id="sortCol" onchange="applyFilters()"><option value="">— none —</option></select>
+    <button class="sort-btn" id="sortDirBtn" onclick="toggleSortDir()">↑ Asc</button>
+  </div>
+  <div class="table-wrap">
+    <table id="data-table">
+      <thead id="thead"></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+  <div class="pagination">
+    <button class="page-btn" id="prevBtn" onclick="changePage(-1)">← Prev</button>
+    <span id="pageInfo"></span>
+    <button class="page-btn" id="nextBtn" onclick="changePage(1)">Next →</button>
+    <span style="margin-left:auto; font-size:12px;" id="rowCount"></span>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+let allData = [], headers = [], filteredData = [], sortDir = 'asc', currentPage = 1;
+const PAGE_SIZE = 25;
+const MAX_FILTER_VALS = 60;
+
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); handleFile(e.dataTransfer.files[0]); });
+document.getElementById('fileInput').addEventListener('change', e => handleFile(e.target.files[0]));
+
+function handleFile(file) {
+  if (!file) return;
+  document.getElementById('fname').textContent = file.name;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const json = XLSX.utils.sheet_to_json(ws, { defval: '' });
+    if (!json.length) return;
+    allData = json;
+    headers = Object.keys(json[0]);
+    buildUI();
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function buildUI() {
+  buildFilters();
+  buildSortOptions();
+  buildHeaders();
+  applyFilters();
+  document.getElementById('drop-zone').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+}
+
+function isNumericCol(col) {
+  let nums = 0;
+  const sample = allData.slice(0, 50);
+  for (const r of sample) { if (r[col] !== '' && !isNaN(Number(r[col]))) nums++; }
+  return nums > sample.length * 0.7;
+}
+
+function getUniqueVals(col) {
+  const s = new Set();
+  for (const r of allData) { if (r[col] !== undefined && r[col] !== '') s.add(String(r[col])); }
+  return [...s].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+}
+
+function buildFilters() {
+  const fb = document.getElementById('filter-bar');
+  fb.innerHTML = '';
+  headers.forEach(col => {
+    const vals = getUniqueVals(col);
+    if (vals.length <= 1 || vals.length > MAX_FILTER_VALS || isNumericCol(col)) return;
+    const grp = document.createElement('div');
+    grp.className = 'filter-group';
+    grp.innerHTML = `<label>${col}</label>`;
+    const sel = document.createElement('select');
+    sel.id = 'f_' + col;
+    sel.innerHTML = `<option value="">All</option>` + vals.map(v => `<option value="${v.replace(/"/g,'&quot;')}">${v}</option>`).join('');
+    sel.addEventListener('change', applyFilters);
+    grp.appendChild(sel);
+    fb.appendChild(grp);
+  });
+  headers.forEach(col => {
+    if (!isNumericCol(col)) return;
+    const grp = document.createElement('div');
+    grp.className = 'filter-group';
+    grp.innerHTML = `<label>${col} (min)</label>`;
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.id = 'fmin_' + col;
+    inp.placeholder = 'Min value';
+    inp.addEventListener('input', applyFilters);
+    grp.appendChild(inp);
+    fb.appendChild(grp);
+    const grp2 = document.createElement('div');
+    grp2.className = 'filter-group';
+    grp2.innerHTML = `<label>${col} (max)</label>`;
+    const inp2 = document.createElement('input');
+    inp2.type = 'text';
+    inp2.id = 'fmax_' + col;
+    inp2.placeholder = 'Max value';
+    inp2.addEventListener('input', applyFilters);
+    grp2.appendChild(inp2);
+    fb.appendChild(grp2);
+  });
+}
+
+function buildSortOptions() {
+  const sc = document.getElementById('sortCol');
+  sc.innerHTML = '<option value="">— none —</option>' + headers.map(h => `<option value="${h}">${h}</option>`).join('');
+}
+
+function buildHeaders() {
+  const thead = document.getElementById('thead');
+  thead.innerHTML = '<tr>' + headers.map(h => `<th onclick="sortByCol('${h.replace(/'/g,"\\'")}') " title="Click to sort">${h}</th>`).join('') + '</tr>';
+}
+
+function sortByCol(col) {
+  const sc = document.getElementById('sortCol');
+  if (sc.value === col) { toggleSortDir(); }
+  else { sc.value = col; sortDir = 'asc'; document.getElementById('sortDirBtn').textContent = '↑ Asc'; }
+  applyFilters();
+}
+
+function toggleSortDir() {
+  sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+  document.getElementById('sortDirBtn').textContent = sortDir === 'asc' ? '↑ Asc' : '↓ Desc';
+  applyFilters();
+}
+
+function applyFilters() {
+  const query = document.getElementById('globalSearch').value.trim().toLowerCase();
+  let data = allData.filter(row => {
+    for (const col of headers) {
+      const fEl = document.getElementById('f_' + col);
+      if (fEl && fEl.value && String(row[col]) !== fEl.value) return false;
+      const fmin = document.getElementById('fmin_' + col);
+      const fmax = document.getElementById('fmax_' + col);
+      if (fmin && fmin.value !== '' && Number(row[col]) < Number(fmin.value)) return false;
+      if (fmax && fmax.value !== '' && Number(row[col]) > Number(fmax.value)) return false;
+    }
+    if (query) {
+      return headers.some(h => String(row[h]).toLowerCase().includes(query));
+    }
+    return true;
+  });
+
+  const sc = document.getElementById('sortCol').value;
+  if (sc) {
+    const num = isNumericCol(sc);
+    data.sort((a, b) => {
+      const av = num ? Number(a[sc]) : String(a[sc]);
+      const bv = num ? Number(b[sc]) : String(b[sc]);
+      if (av < bv) return sortDir === 'asc' ? -1 : 1;
+      if (av > bv) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }
+
+  filteredData = data;
+  currentPage = 1;
+  renderTable();
+  renderStats();
+}
+
+function renderTable() {
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const pageData = filteredData.slice(start, start + PAGE_SIZE);
+  const tbody = document.getElementById('tbody');
+  if (!pageData.length) {
+    tbody.innerHTML = `<tr><td colspan="${headers.length}" class="no-rows">No rows match the current filters.</td></tr>`;
+  } else {
+    tbody.innerHTML = pageData.map(row =>
+      '<tr>' + headers.map(h => `<td title="${String(row[h]).replace(/"/g,'&quot;')}">${row[h]}</td>`).join('') + '</tr>'
+    ).join('');
+  }
+  const totalPages = Math.max(1, Math.ceil(filteredData.length / PAGE_SIZE));
+  document.getElementById('pageInfo').textContent = `Page ${currentPage} of ${totalPages}`;
+  document.getElementById('prevBtn').disabled = currentPage <= 1;
+  document.getElementById('nextBtn').disabled = currentPage >= totalPages;
+  document.getElementById('rowCount').textContent = `${filteredData.length.toLocaleString()} of ${allData.length.toLocaleString()} rows`;
+}
+
+function renderStats() {
+  const sr = document.getElementById('stats-row');
+  const numCols = headers.filter(isNumericCol).slice(0, 3);
+  const cards = [
+    { label: 'Filtered rows', val: filteredData.length.toLocaleString() },
+    { label: 'Total rows', val: allData.length.toLocaleString() },
+    { label: 'Columns', val: headers.length },
+  ];
+  numCols.forEach(col => {
+    const vals = filteredData.map(r => Number(r[col])).filter(v => !isNaN(v));
+    const sum = vals.reduce((a, b) => a + b, 0);
+    cards.push({ label: col + ' (sum)', val: sum.toLocaleString(undefined, { maximumFractionDigits: 2 }) });
+  });
+  sr.innerHTML = cards.map(c => `<div class="stat-card"><div class="s-label">${c.label}</div><div class="s-val">${c.val}</div></div>`).join('');
+}
+
+function changePage(dir) {
+  const totalPages = Math.ceil(filteredData.length / PAGE_SIZE);
+  currentPage = Math.max(1, Math.min(totalPages, currentPage + dir));
+  renderTable();
+}
+
+function resetFilters() {
+  document.getElementById('globalSearch').value = '';
+  headers.forEach(col => {
+    const fEl = document.getElementById('f_' + col);
+    if (fEl) fEl.value = '';
+    const fmin = document.getElementById('fmin_' + col);
+    const fmax = document.getElementById('fmax_' + col);
+    if (fmin) fmin.value = '';
+    if (fmax) fmax.value = '';
+  });
+  document.getElementById('sortCol').value = '';
+  sortDir = 'asc';
+  document.getElementById('sortDirBtn').textContent = '↑ Asc';
+  applyFilters();
+}
+
+function changeFile() {
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('drop-zone').style.display = 'block';
+  document.getElementById('fileInput').value = '';
+  allData = []; headers = []; filteredData = [];
+}
+</script>
